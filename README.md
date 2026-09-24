@@ -4,17 +4,17 @@
 
 # AtnKit
 
-AtnKit is a pure Dart codec for Adobe Photoshop Actions (`.atn`) files. It reads and writes version 16 action sets, exposes immutable actions and events, and delegates Photoshop Action Descriptor values to `package:pscore`.
+AtnKit is a pure Dart codec for Adobe Photoshop Actions (`.atn`) files. It reads and writes version 12 and 16 action sets, exposes immutable actions and events, and delegates version 16 Photoshop Action Descriptor values to `package:pscore`.
 
 The package is intended for editors such as Focale that need editable automation data rather than opaque action files: stable command identifiers, playback flags, keyboard shortcuts, typed descriptors, and bounded decoding of untrusted input.
 
 ## Supported data
 
-- Version 16 files containing one named action set and its ordered actions.
+- Version 12 and 16 files containing one named action set and its ordered actions. Version 12 was found in a Photoshop 5 action file; new files default to version 16.
 - Action indices, names, expanded state, function-key shortcuts, Shift modifiers, and color labels.
 - Ordered action events with enabled, dialog, and expansion flags.
 - Both `TEXT` string identifiers and compact `long` four-character identifiers.
-- Optional version 16 Photoshop Action Descriptors decoded and encoded through PsCore.
+- Optional Photoshop Action Descriptors, including the compact version 12 layout and version 16 descriptors through PsCore.
 - Unknown Photoshop commands retained through their identifiers, display names, flags, and typed descriptors.
 - Configurable limits for file size, names, actions, events, text fields, and descriptor collections.
 - Optional preservation of trailing bytes for forensic round trips.

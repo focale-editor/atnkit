@@ -68,7 +68,7 @@ final class AtnFormatException implements FormatException {
   }
 }
 
-/// Reports a model value that cannot be represented by ATN version 16.
+/// Reports a model value that cannot be represented by the selected ATN version.
 final class AtnWriteException implements Exception {
   /// Human-readable explanation of the invalid value.
   final String message;

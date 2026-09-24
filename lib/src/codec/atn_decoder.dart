@@ -2,13 +2,14 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:atnkit/src/codec/atn_binary.dart';
+import 'package:atnkit/src/codec/atn_legacy_descriptor.dart';
 import 'package:atnkit/src/model/atn_action.dart';
 import 'package:atnkit/src/model/atn_event.dart';
 import 'package:atnkit/src/model/atn_file.dart';
 import 'package:atnkit/src/model/atn_options.dart';
 import 'package:pscore/pscore.dart';
 
-/// Decodes complete Photoshop ATN version 16 action-set files.
+/// Decodes Photoshop ATN version 12 and 16 action-set files.
 final class AtnDecoder extends Converter<List<int>, AtnFile> {
   /// Resource limits used for every conversion.
   final AtnDecodeOptions options;
@@ -32,18 +33,18 @@ final class AtnDecoder extends Converter<List<int>, AtnFile> {
         source: input,
       );
     }
-    final Uint8List bytes = input is Uint8List ? Uint8List.fromList(input) : Uint8List.fromList(input);
+    final Uint8List bytes = Uint8List.fromList(input);
     final PsBinaryReader reader = PsBinaryReader(bytes: bytes);
     try {
       final int version = reader.readInt32();
-      if (version != AtnFile.supportedVersion) {
+      if (!AtnFile.isSupportedVersion(version)) {
         throw AtnFormatException(
           message: 'Unsupported ATN version $version.',
           source: bytes,
           offset: 0,
         );
       }
-      final AtnActionSet actionSet = _readActionSet(reader);
+      final AtnActionSet actionSet = _readActionSet(reader, version: version);
       final Uint8List trailingData = reader.isAtEnd ? Uint8List(0) : reader.readBytes(reader.remaining);
       if (trailingData.isNotEmpty && !options.preserveTrailingData) {
         throw AtnFormatException(
@@ -69,7 +70,7 @@ final class AtnDecoder extends Converter<List<int>, AtnFile> {
   }
 
   /// Decodes the one action set following the version field.
-  AtnActionSet _readActionSet(PsBinaryReader reader) {
+  AtnActionSet _readActionSet(PsBinaryReader reader, {required int version}) {
     final String name = readAtnUnicodeString(
       reader,
       maximumCodeUnits: options.maxNameCodeUnits,
@@ -84,24 +85,25 @@ final class AtnDecoder extends Converter<List<int>, AtnFile> {
     int eventCount = 0;
     final List<AtnAction> actions = [];
     for (int index = 0; index < count; index++) {
-      final AtnAction action = _readAction(reader, index: index);
+      final AtnAction action = _readAction(
+        reader,
+        index: index,
+        maximumEvents: options.maxEvents - eventCount,
+        version: version,
+      );
       eventCount += action.events.length;
-      if (eventCount > options.maxEvents) {
-        throw AtnFormatException(
-          message:
-              'ATN event count exceeds the configured '
-              '${options.maxEvents} limit.',
-          source: reader.bytes,
-          offset: reader.baseOffset + reader.offset,
-        );
-      }
       actions.add(action);
     }
     return AtnActionSet(name: name, expanded: expanded, actions: actions);
   }
 
   /// Decodes one action and its declared events.
-  AtnAction _readAction(PsBinaryReader reader, {required int index}) {
+  AtnAction _readAction(
+    PsBinaryReader reader, {
+    required int index,
+    required int maximumEvents,
+    required int version,
+  }) {
     final int storedIndex = reader.readInt16();
     final bool shiftKey = reader.readUint8() != 0;
     final int commandKey = reader.readUint8();
@@ -114,7 +116,7 @@ final class AtnDecoder extends Converter<List<int>, AtnFile> {
     final bool expanded = reader.readUint8() != 0;
     final int count = readAtnCount(
       reader,
-      maximum: options.maxEvents,
+      maximum: maximumEvents,
       label: 'Event in action ${index + 1}',
     );
     return AtnAction(
@@ -125,13 +127,24 @@ final class AtnDecoder extends Converter<List<int>, AtnFile> {
       name: name,
       expanded: expanded,
       events: [
-        for (int eventIndex = 0; eventIndex < count; eventIndex++) readEvent(reader, eventIndex: eventIndex),
+        for (int eventIndex = 0; eventIndex < count; eventIndex++) readEvent(reader, eventIndex: eventIndex, version: version),
       ],
     );
   }
 
   /// Decodes one action event from the current reader position.
-  AtnActionEvent readEvent(PsBinaryReader reader, {int? eventIndex}) {
+  AtnActionEvent readEvent(
+    PsBinaryReader reader, {
+    int? eventIndex,
+    int version = AtnFile.supportedVersion,
+  }) {
+    if (!AtnFile.isSupportedVersion(version)) {
+      throw AtnFormatException(
+        message: 'Unsupported ATN version $version.',
+        source: reader.bytes,
+        offset: reader.baseOffset + reader.offset,
+      );
+    }
     final bool expanded = reader.readUint8() != 0;
     final bool enabled = reader.readUint8() != 0;
     final bool withDialog = reader.readUint8() != 0;
@@ -168,10 +181,15 @@ final class AtnDecoder extends Converter<List<int>, AtnFile> {
       );
     }
     final PsDescriptor? descriptor = hasDescriptor == -1
-        ? PsDescriptorCodec.decodeReader(
-            reader,
-            options: options.descriptorOptions,
-          )
+        ? version == AtnFile.legacyVersion
+              ? AtnLegacyDescriptorCodec.decodeReader(
+                  reader,
+                  options: options.descriptorOptions,
+                )
+              : PsDescriptorCodec.decodeReader(
+                  reader,
+                  options: options.descriptorOptions,
+                )
         : null;
     return AtnActionEvent(
       expanded: expanded,

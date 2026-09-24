@@ -2,13 +2,14 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:atnkit/src/codec/atn_binary.dart';
+import 'package:atnkit/src/codec/atn_legacy_descriptor.dart';
 import 'package:atnkit/src/model/atn_action.dart';
 import 'package:atnkit/src/model/atn_event.dart';
 import 'package:atnkit/src/model/atn_file.dart';
 import 'package:atnkit/src/model/atn_options.dart';
 import 'package:pscore/pscore.dart';
 
-/// Encodes Photoshop ATN version 16 action-set files.
+/// Encodes Photoshop ATN version 12 and 16 action-set files.
 final class AtnEncoder extends Converter<AtnFile, List<int>> {
   /// Validation and preservation choices used for every conversion.
   final AtnEncodeOptions options;
@@ -24,14 +25,14 @@ final class AtnEncoder extends Converter<AtnFile, List<int>> {
 
   @override
   Uint8List convert(AtnFile input) {
-    if (input.version != AtnFile.supportedVersion) {
-      throw const AtnWriteException(
-        message: 'Only ATN version ${AtnFile.supportedVersion} can be written.',
+    if (!AtnFile.isSupportedVersion(input.version)) {
+      throw AtnWriteException(
+        message: 'Unsupported ATN version ${input.version}.',
       );
     }
     final PsBinaryWriter writer = PsBinaryWriter();
     writer.writeInt32(input.version);
-    _writeActionSet(writer, input.actionSet);
+    _writeActionSet(writer, input.actionSet, version: input.version);
     if (options.includeTrailingData) {
       writer.writeBytes(input.trailingData);
     }
@@ -39,18 +40,26 @@ final class AtnEncoder extends Converter<AtnFile, List<int>> {
   }
 
   /// Encodes the file's single action set.
-  void _writeActionSet(PsBinaryWriter writer, AtnActionSet set) {
+  void _writeActionSet(
+    PsBinaryWriter writer,
+    AtnActionSet set, {
+    required int version,
+  }) {
     writeAtnUnicodeString(writer, set.name, label: 'Action-set name');
     writer
       ..writeUint8(set.expanded ? 1 : 0)
       ..writeInt32(set.actions.length);
     for (final AtnAction action in set.actions) {
-      _writeAction(writer, action);
+      _writeAction(writer, action, version: version);
     }
   }
 
   /// Encodes one action and its ordered events.
-  void _writeAction(PsBinaryWriter writer, AtnAction action) {
+  void _writeAction(
+    PsBinaryWriter writer,
+    AtnAction action, {
+    required int version,
+  }) {
     _requireSigned16(action.index, 'Action index');
     _requireByte(action.commandKey, 'Function-key byte');
     _requireSigned16(action.colorIndex, 'Colour index');
@@ -64,12 +73,19 @@ final class AtnEncoder extends Converter<AtnFile, List<int>> {
       ..writeUint8(action.expanded ? 1 : 0)
       ..writeInt32(action.events.length);
     for (final AtnActionEvent event in action.events) {
-      writeEvent(writer, event);
+      writeEvent(writer, event, version: version);
     }
   }
 
   /// Encodes one action event at the current writer position.
-  void writeEvent(PsBinaryWriter writer, AtnActionEvent event) {
+  void writeEvent(
+    PsBinaryWriter writer,
+    AtnActionEvent event, {
+    int version = AtnFile.supportedVersion,
+  }) {
+    if (!AtnFile.isSupportedVersion(version)) {
+      throw AtnWriteException(message: 'Unsupported ATN version $version.');
+    }
     _requireByte(event.dialogOptions, 'Dialog-options byte');
     writer
       ..writeUint8(event.expanded ? 1 : 0)
@@ -101,7 +117,9 @@ final class AtnEncoder extends Converter<AtnFile, List<int>> {
     } else {
       writer
         ..writeInt32(-1)
-        ..writeBytes(PsDescriptorCodec.encode(descriptor));
+        ..writeBytes(
+          version == AtnFile.legacyVersion ? AtnLegacyDescriptorCodec.encode(descriptor) : PsDescriptorCodec.encode(descriptor),
+        );
     }
   }
 

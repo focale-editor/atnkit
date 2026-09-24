@@ -31,6 +31,7 @@ pubspec_overrides.yaml
 .flutter-plugins-dependencies
 /build/
 /coverage/
+/ATN_EXAMPLES/
 
 # Downloaded by `dart run rawkit:prepare_library desktop`; do not commit source.
 /native/third_party/libraw/

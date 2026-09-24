@@ -4,8 +4,14 @@ import 'package:atnkit/src/model/atn_action.dart';
 
 /// One complete Photoshop ATN action-set file.
 final class AtnFile {
-  /// ATN container version written by currently supported Photoshop files.
+  /// ATN container version used for newly created files.
   static const int supportedVersion = 16;
+
+  /// Legacy ATN container version found in Photoshop 5 action files.
+  static const int legacyVersion = 12;
+
+  /// Whether [version] has a supported action and descriptor layout.
+  static bool isSupportedVersion(int version) => version == legacyVersion || version == supportedVersion;
 
   /// Version stored in the file header.
   final int version;
