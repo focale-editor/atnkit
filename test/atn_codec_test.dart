@@ -126,6 +126,27 @@ void main() {
       ).throws<AtnFormatException>();
     });
 
+    test('reads class-prefixed integer references from version 16 actions', () {
+      final Uint8List source = _integerReferenceFixture();
+
+      final AtnFile decoded = AtnDecoder.decode(source);
+      final PsDescriptor descriptor = decoded.actionSet.actions.single.events.single.descriptor!;
+      final PsReferenceValue reference = descriptor.value('null')! as PsReferenceValue;
+      final PsIndexValue index = reference.values.single as PsIndexValue;
+
+      check(index.name).equals('\u0000');
+      check(index.classId).equals('Lyr ');
+      check(index.value).equals(0);
+      check(descriptor.booleanValue('Adjs')).equals(false);
+      check(AtnEncoder.encode(decoded)).deepEquals(source);
+      check(
+        () => AtnEncoder.encode(AtnFile(version: AtnFile.legacyVersion, actionSet: decoded.actionSet)),
+      ).throws<AtnWriteException>();
+      check(
+        () => AtnDecoder.decode(source, options: const AtnDecodeOptions(descriptorOptions: PsDescriptorDecodeOptions(maxValues: 1))),
+      ).throws<AtnFormatException>();
+    });
+
     test('applies the event limit across the complete action set', () {
       final Uint8List encoded = AtnEncoder.encode(
         AtnFile(
@@ -167,6 +188,32 @@ void main() {
       check(decoded.trailingData).deepEquals([1, 2, 3]);
     });
   });
+}
+
+/// Returns an independently framed version 16 action with a layer-index target.
+///
+/// The class prefix matches the move events in Original Mockups' action pack.
+Uint8List _integerReferenceFixture() {
+  const String hex =
+      '00000010'
+      '000000040053006500740000'
+      '0100000001'
+      '000000000000'
+      '00000005004d006f007600650000'
+      '0100000001'
+      '00010002'
+      '54455854000000046d6f7665'
+      '000000044d6f7665'
+      'ffffffff'
+      '00000005004d006f007600650000'
+      '000000006d6f7665'
+      '00000002'
+      '000000006e756c6c6f626a2000000001'
+      '696e6478000000010000000000004c79722000000000'
+      '0000000041646a73626f6f6c00';
+  return Uint8List.fromList([
+    for (int index = 0; index < hex.length; index += 2) int.parse(hex.substring(index, index + 2), radix: 16),
+  ]);
 }
 
 /// Returns an independently written version 12 action with nested values.

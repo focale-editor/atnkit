@@ -15,6 +15,12 @@ identifiers are four-character codes. Version 12 strings include a counted null
 terminator. A newly constructed `AtnFile` defaults to version 16; decoded files
 retain their version when re-encoded.
 
+Version 16 integer references (`Idnt` and `indx`) include the referenced class
+before the numeric value. `PsIdentifierValue` and `PsIndexValue` retain that
+class and its original name. When authoring these references, supply `classId`
+(for example, `Lyr ` for a layer); the ATN writer rejects a missing class instead
+of emitting a descriptor with the ordinary PSD integer layout.
+
 The version in the ATN header is a file-format version, not the Photoshop
 application version. Adobe's [file-format specification](https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/)
 documents version 16. A [Photoshop 5 action file](https://community.adobe.com/questions-712/i-need-help-with-an-edit-1129751)

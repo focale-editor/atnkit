@@ -45,37 +45,25 @@ final class AtnEncodeOptions {
 }
 
 /// Reports malformed, truncated, unsupported, or unsafe ATN input.
-final class AtnFormatException implements FormatException {
-  /// Human-readable explanation of the malformed data.
-  @override
-  final String message;
-
-  /// Input object associated with the failure, when available.
-  @override
-  final Object? source;
-
-  /// Absolute byte offset associated with the failure, when available.
-  @override
-  final int? offset;
-
-  /// Creates an error at an optional byte [offset].
-  const AtnFormatException({required this.message, this.source, this.offset});
+final class AtnFormatException extends PsFormatException {
+  /// Creates an error at an optional absolute byte [offset].
+  const AtnFormatException({
+    required super.message,
+    super.source,
+    super.offset,
+  });
 
   @override
-  String toString() {
-    final String location = offset == null ? '' : ' at byte $offset';
-    return 'AtnFormatException$location: $message';
-  }
+  String get typeName => 'AtnFormatException';
 }
 
 /// Reports a model value that cannot be represented by the selected ATN version.
-final class AtnWriteException implements Exception {
-  /// Human-readable explanation of the invalid value.
-  final String message;
-
-  /// Creates an encoding error.
-  const AtnWriteException({required this.message});
+final class AtnWriteException extends PsWriteException {
+  /// Creates an encoding error with a user-facing [message].
+  const AtnWriteException({
+    required super.message,
+  });
 
   @override
-  String toString() => 'AtnWriteException: $message';
+  String get typeName => 'AtnWriteException';
 }

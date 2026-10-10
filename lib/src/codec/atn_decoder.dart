@@ -188,7 +188,11 @@ final class AtnDecoder extends Converter<List<int>, AtnFile> {
                 )
               : PsDescriptorCodec.decodeReader(
                   reader,
-                  options: options.descriptorOptions,
+                  options: PsDescriptorDecodeOptions(
+                    maxDepth: options.descriptorOptions.maxDepth,
+                    maxValues: options.descriptorOptions.maxValues,
+                    integerReferencesHaveClass: true,
+                  ),
                 )
         : null;
     return AtnActionEvent(

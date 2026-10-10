@@ -118,7 +118,7 @@ final class AtnEncoder extends Converter<AtnFile, List<int>> {
       writer
         ..writeInt32(-1)
         ..writeBytes(
-          version == AtnFile.legacyVersion ? AtnLegacyDescriptorCodec.encode(descriptor) : PsDescriptorCodec.encode(descriptor),
+          version == AtnFile.legacyVersion ? AtnLegacyDescriptorCodec.encode(descriptor) : PsDescriptorCodec.encode(descriptor, requireIntegerReferenceClasses: true),
         );
     }
   }

@@ -211,8 +211,14 @@ void _writeValue(PsBinaryWriter writer, PsDescriptorValue value) {
       _writeCode(writer, value.classId, 'Reference class');
       writer.writeUint32(value.value);
     case PsIdentifierValue():
+      if (value.classId != null || value.name.isNotEmpty) {
+        throw const AtnWriteException(message: 'Class-prefixed integer references cannot be written as an unverified version 12 layout');
+      }
       writer.writeInt32(value.value);
     case PsIndexValue():
+      if (value.classId != null || value.name.isNotEmpty) {
+        throw const AtnWriteException(message: 'Class-prefixed integer references cannot be written as an unverified version 12 layout');
+      }
       writer.writeInt32(value.value);
     case PsNameValue():
       _requireEmptyName(value.name);
